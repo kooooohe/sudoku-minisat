@@ -1,5 +1,6 @@
 # sudoku-minisat
-``` sh
+
+```sh
 go run main.go
 minisat target.txt
 ```
