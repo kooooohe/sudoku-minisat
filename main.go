@@ -2,10 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"math/rand"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // varnum converts the (row, column, digit) to a variable number for SAT solver
@@ -80,15 +84,94 @@ func main() {
 	}
 
 	filename := os.Args[1]
+	baseClauses := generateClauses()
 
-	file, err := os.Open(filename)
+	sudoku := sudokuBoard(filename)
+	clauses := toClauses(sudoku)
+	clauses = append(baseClauses, clauses...)
+	writeCNF(clauses)
+	r := runMinisat()
+	fmt.Println(r)
+	if !r {
+		fmt.Println("Error the file is not satisfiable")
+		return
+	}
+
+	cells := randomCells()
+	for _,v := range cells {
+		// remove a number of cell
+
+		// check other numbers
+		sudoku[v[0]][v[1]] *= -1
+
+		clauses := toClauses(sudoku)
+		clauses = append(baseClauses, clauses...)
+		writeCNF(clauses)
+		r := runMinisat()
+		fmt.Println(r)
+
+		if r {
+			sudoku[v[0]][v[1]] *= -1
+			break
+		}
+
+		// make it blank
+		sudoku[v[0]][v[1]] = 0
+	}
+	for _, row := range sudoku {
+		fmt.Println(row)
+	}
+}
+
+func randomCells() [][]int{
+	rand.NewSource(time.Now().UnixNano())
+
+	combinations := [][]int{}
+	for i := 0; i < 9; i++ {
+		for j := 0; j < 9; j++ {
+			combinations = append(combinations, []int{i, j})
+		}
+	}
+
+	rand.Shuffle(len(combinations), func(i, j int) {
+		combinations[i], combinations[j] = combinations[j], combinations[i]
+	})
+	return combinations
+}
+
+func toClauses(board [][]int) [][]int {
+	clauses := [][]int{}
+	for i, vs := range board {
+		for j, v := range vs {
+			if v == 0 {
+				continue
+			}
+			isn := v < 0
+			if isn {
+				v *= -1
+			}
+			c := varnum(i+1, j+1, v)
+			if isn {
+				fmt.Println("kohe")
+				c *= -1
+				fmt.Println(c)
+			}
+			clause := []int{c}
+			clauses = append(clauses, clause)
+		}
+	}
+
+	return clauses
+}
+
+func sudokuBoard(fName string) [][]int {
+	var sudoku [][]int
+	file, err := os.Open(fName)
 	if err != nil {
 		fmt.Printf("Error opening file: %s\n", err)
 		os.Exit(1)
 	}
 	defer file.Close()
-
-	var sudoku [][]int
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
@@ -115,22 +198,12 @@ func main() {
 	for _, row := range sudoku {
 		fmt.Println(row)
 	}
+	return sudoku
+}
 
-	// sudoku result
-	clauses := [][]int{}
-	for i, vs := range sudoku {
-		for j, v := range vs {
-			c := varnum(i+1, j+1, v)
-			clause := []int{c}
-			clauses = append(clauses, clause)
-		}
-	}
-
-	baseClauses := generateClauses()
-	clauses = append(clauses, baseClauses...)
-
-	// Writing the CNF to a file
-	file, err = os.Create("minisat_input_9x9.txt")
+// overwrite
+func writeCNF(clauses [][]int) {
+	file, err := os.Create("create_minisat_input_9x9.txt")
 	if err != nil {
 		fmt.Println("Error creating file:", err)
 		return
@@ -159,4 +232,41 @@ func main() {
 			return
 		}
 	}
+}
+
+func runMinisat() bool {
+	minisatCmd := "minisat"
+	minisatArgs := []string{"create_minisat_input_9x9.txt"}
+
+	tailCmd := "tail"
+	tailArgs := []string{"-n", "1"}
+
+	cmdMinisat := exec.Command(minisatCmd, minisatArgs...)
+	var outMinisat bytes.Buffer
+	cmdMinisat.Stdout = &outMinisat
+
+	err := cmdMinisat.Run()
+	if err != nil {
+		// fmt.Printf("Error running minisat: %s\n", err)
+		// return false
+	}
+	// fmt.Println(outMinisat.String())
+
+	cmdTail := exec.Command(tailCmd, tailArgs...)
+	cmdTail.Stdin = &outMinisat
+
+	var outTail bytes.Buffer
+	cmdTail.Stdout = &outTail
+
+	err = cmdTail.Run()
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		return false
+	}
+
+	result := outTail.String()
+	result = strings.TrimSpace(result)
+	fmt.Printf("Result: %s\n", result)
+
+	return result == "SATISFIABLE"
 }
