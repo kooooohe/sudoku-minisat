@@ -152,9 +152,7 @@ func toClauses(board [][]int) [][]int {
 			}
 			c := varnum(i+1, j+1, v)
 			if isn {
-				fmt.Println("kohe")
 				c *= -1
-				fmt.Println(c)
 			}
 			clause := []int{c}
 			clauses = append(clauses, clause)
