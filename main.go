@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 )
 
 // varnum converts the (row, column, digit) to a variable number for SAT solver
@@ -71,10 +74,63 @@ func generateClauses() [][]int {
 }
 
 func main() {
-	clauses := generateClauses()
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: sudoku <filename>")
+		os.Exit(1)
+	}
+
+	filename := os.Args[1]
+
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Printf("Error opening file: %s\n", err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	var sudoku [][]int
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		numbers := strings.Split(line, ",")
+
+		var row []int
+		for _, numStr := range numbers {
+			num, err := strconv.Atoi(numStr)
+			if err != nil {
+				fmt.Printf("Error converting string to int: %s\n", err)
+				os.Exit(1)
+			}
+			row = append(row, num)
+		}
+		sudoku = append(sudoku, row)
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("Error reading file: %s\n", err)
+		os.Exit(1)
+	}
+
+	for _, row := range sudoku {
+		fmt.Println(row)
+	}
+
+	// sudoku result
+	clauses := [][]int{}
+	for i, vs := range sudoku {
+		for j, v := range vs {
+			c := varnum(i+1, j+1, v)
+			clause := []int{c}
+			clauses = append(clauses, clause)
+		}
+	}
+
+	baseClauses := generateClauses()
+	clauses = append(clauses, baseClauses...)
 
 	// Writing the CNF to a file
-	file, err := os.Create("minisat_input_9x9.txt")
+	file, err = os.Create("minisat_input_9x9.txt")
 	if err != nil {
 		fmt.Println("Error creating file:", err)
 		return
@@ -104,4 +160,3 @@ func main() {
 		}
 	}
 }
-
