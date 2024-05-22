@@ -20,7 +20,7 @@ c1 c2 | d1 d2
 c3 c4 | d3 d4
 */
 
-const SIZE = 9
+const SIZE = 25
 
 // varnum converts the (row, column, digit) to a variable number for SAT solver
 func varnum(row, column, digit int) int {
