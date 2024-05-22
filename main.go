@@ -20,7 +20,7 @@ c1 c2 | d1 d2
 c3 c4 | d3 d4
 */
 
-const SIZE = 4
+const SIZE = 9
 
 // varnum converts the (row, column, digit) to a variable number for SAT solver
 func varnum(row, column, digit int) int {
@@ -104,7 +104,7 @@ func main() {
 	defer file.Close()
 
 	// Write the header
-	_, err = file.WriteString(fmt.Sprintf("p cnf 64 %d\n", len(clauses)))
+	_, err = file.WriteString(fmt.Sprintf("p cnf %d %d\n",SIZE*SIZE*SIZE, len(clauses)))
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
 		return
