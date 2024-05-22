@@ -96,7 +96,7 @@ func main() {
 	clauses := generateClauses()
 
 	// Writing the CNF to a file
-	file, err := os.Create("minisat_input.txt")
+	file, err := os.Create("minisat_input.cnf")
 	if err != nil {
 		fmt.Println("Error creating file:", err)
 		return
